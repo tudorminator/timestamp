@@ -1,6 +1,8 @@
 # timestamp
 A node.js hack to change the modified time of files based on EXIF data (for pictures) or the filename (for movies or files lacking EXIF data)
 
+Uses the great (ExifTool by Phil Harvey)[https://www.sno.phy.queensu.ca/~phil/exiftool/] if installed and available in the current path, otherwise tries a very crude parsing of the filename.
+
 ## Usage:
 `timestamp.js '/path/to/some/folder/with/images/and/or/movies'`
 
