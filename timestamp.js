@@ -305,8 +305,7 @@ const files = execSync(`ls -1Ap "${targetDirectory}"`)
 if (files.length) {
 	hideCursor()
 	console.info(`
-Target: ${chalk.yellow(targetDirectory)}
- Files: ${chalk.blue(files.length)}\n`);
+Files found: ${chalk.blue(files.length)}\n`);
 
 	// do the magic!
  	files.forEach((file, index, array) => processFile(file, targetDirectory, index, array.length));
