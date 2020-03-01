@@ -4,7 +4,9 @@ A node.js hack to change the modified time of files based on EXIF data (for pict
 Uses the great [ExifTool by Phil Harvey](https://www.sno.phy.queensu.ca/~phil/exiftool/) if installed and available in the current path, otherwise tries a very crude parsing of the filename.
 
 ## Requirements:
-- [Chalk](https://github.com/chalk/chalk) for color output: `$ npm install chalk` 
+- [Node.js](https://nodejs.org/) obviously
+- [Chalk](https://github.com/chalk/chalk) for color output: `$ npm install chalk`
+- [GNU core utilities](https://www.gnu.org/software/coreutils/coreutils.html) on macOS, because Apples's BSD ones have different command line switches and I just can't be bothered. Install them through [Homebrew](https://brew.sh/) or [MacPorts](https://www.macports.org/): `$ brew install coreutils`
 
 ## Usage:
 ```bash

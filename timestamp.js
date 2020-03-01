@@ -1,11 +1,14 @@
 #!/usr/bin/env node
 
+const os = require('os');
+const readline = require('readline');
 const chalk = require('chalk');
 const { execSync } = require('child_process');
 const path = require('path');
 
 const scriptPath = path.parse(process.argv[1]);
 const scriptName = scriptPath.base;
+const platform = os.platform();
 const helpText = `Usage: ${chalk.cyan(`${scriptName}`)} ${chalk.magenta('/path/to/some/folder/with/images/and/or/movies')}
 
 Update the modification times of ${chalk.inverse('image')} or ${chalk.inverse('video')} files in the specified directory
@@ -42,8 +45,9 @@ const padNumber = (number, digits) => {
  * @param {string} timeStamp New modification date-time
  * @param {string} file The file to be changed (full path)
  */
+const touchCommand = platform === 'darwin' ? 'gtouch' : 'touch';
 const touchFile = (timeStamp, file) => {
-	const shellCommand1 = `touch -cm --date="${timeStamp}" "${file}"`;
+	const shellCommand1 = `${touchCommand} -cm --date="${timeStamp}" "${file}"`;
 	// const stamp = timeStamp.replace(/[^\d]/g, '').slice(0, -2);
 	// const shellCommand2 = `touch -cmt ${stamp} "${file}"`;
 	try {
@@ -108,10 +112,11 @@ const getExifData = (file) => {
  * Get `modified` date-time from file
  * @param {string} file File to check
  */
+const statCommand = platform === 'darwin' ? 'gstat' : 'stat';
 const getModifiedTime = (file) => {
 	let mTime = '';
 	try {
-		mTime = execSync(`stat -c %y "${file}"`, { stdio: [null, null, 'ignore'] })
+		mTime = execSync(`${statCommand} -c %y "${file}"`, { stdio: [null, null, 'ignore'] })
 			.toString()
 			.trim()
 			.split('.')[0];
@@ -139,18 +144,18 @@ const parseFileName = (fileName) => {
 			.filter(elem => notNumberRegEx.test(elem))
 			.length;
 		// console.log({ separatorsCount });
-		if (separatorsCount < 2) {
+		if (separatorsCount && separatorsCount < 2) {
 			time = time.replace(notNumberRegEx, '') // remove all non-digits
 				.match(/.{1,2}/g) // gropup every 2 digits
 				.join(':'); // insert `:`
 				// console.log('2.', {time});
 		}
 		// add seconds if necessary
-		if (time.length < 8) {
-			time += ':00';
-			// console.log('3.', {time});
-		}
-		timeStampFromFilename = `${date} ${time}`;
+		if (time.length && time.length < 8) {
+      time += ':00';
+      // console.log('3.', {time});
+    }
+		timeStampFromFilename = `${date}${time.length ? ' ' + time : ''}`;
 	} else {
 		console.error(chalk.red('Unexpected filename format!\n'), { fileName }, '\n', {'RegExp match': JSON.stringify(match)});
 		errors += 1;
@@ -163,7 +168,7 @@ const parseFileName = (fileName) => {
  * @param {string} fileName The file to be processed (full path)
  */
 const processFile = (fileName, path, index, totalCount) => {
-	printProgressBar(index + 1, totalCount);
+	printStatus(index + 1, totalCount, fileName);
 	const exifDateTime = getExifData(`${path}${fileName}`);
 	const mTime = getModifiedTime(`${path}${fileName}`);
 
@@ -176,14 +181,16 @@ const processFile = (fileName, path, index, totalCount) => {
 				exitCode = 1;
 			} else {
 				processed += 1;
-				console.info(`${fileName}: ${chalk.magenta(mTime)} → ${chalk.cyan(exifDateTime)} (EXIF)\n`);
-				// console.info(`\n${fileName}: Changing using EXIF date`);
-				// console.info(` from:\t${chalk.magenta(mTime)}`);
-				// console.info(` to:\t${ chalk.cyan(exifDateTime)}`);
+				// console.info(`${fileName}: ${chalk.magenta(mTime)} → ${chalk.cyan(exifDateTime)} (EXIF)\n`);
+				printStatus(
+					index + 1,
+					totalCount,
+					`${fileName}: ${chalk.magenta(mTime)} → ${chalk.cyan(exifDateTime)} (EXIF)`,
+					true
+				);
 			}
 		} else {
 			skipped += 1;
-			// console.info(`${fileName}: EXIF date matches; skip`);
 		}
 	} else {
 		// use date from filename
@@ -197,19 +204,26 @@ const processFile = (fileName, path, index, totalCount) => {
 					exitCode = 1;
 				} else {
 					processed += 1;
-					console.info(`${fileName}: ${chalk.magenta(mTime)} → ${chalk.cyan(timeStampFromFilename)} (parsed)\n`);
-					// console.info(`\n${fileName}: Changing using parsed file name`);
-					// console.info(` from:\t${chalk.magenta(mTime)}`);
-					// console.info(` to:\t${ chalk.cyan(timeStampFromFilename)}`);
+					// console.info(`${fileName}: ${chalk.magenta(mTime)} → ${chalk.cyan(timeStampFromFilename)} (parsed)\n`);
+					printStatus(
+						index + 1,
+						totalCount,
+						`${fileName}: ${chalk.magenta(mTime)} → ${chalk.cyan(timeStampFromFilename)} (parsed)`,
+						true
+					);
 				}
 			}	else {
 				skipped += 1;
-				// console.info(`${fileName}: Parsed file name matches; skip`);
 			}
 		} else {
 			skipped += 1;
 			errors += 1;
-			console.info(`${fileName}: Can't parse file name; skip`);
+			printStatus(
+				index + 1,
+				totalCount,
+				`${fileName}: Can't parse file name; skip`,
+				true
+			);
 		}
 	}
 }
@@ -217,13 +231,21 @@ const processFile = (fileName, path, index, totalCount) => {
 /**
  * Print progress bar
  */
-const printProgressBar = (current, total) => {
+const printStatus = (current, total, status = '', persistStatus = false) => {
 	const percent = Math.floor(current * 100 / total);
 	const barLength = totalTerminalColumns - 1 - 2 - 4; // 2 chars for bar ends, 4 chars for percent label
 	const filledLength = Math.min(barLength, Math.floor(percent / 100 * barLength));
 	const padLength = barLength - filledLength;
 	// console.debug({current, total, percent, barLength, filledLength, padLength});
-	process.stdout.write(`[${''.padEnd(filledLength, '―')}${chalk.gray(''.padEnd(padLength, "-"))}] ${percent.toString().padStart(3)}%\r`);
+	process.stdout.write(`${percent.toString().padStart(3)}% [${''.padEnd(filledLength, '―')}${chalk.gray(''.padEnd(padLength, "-"))}]\n`);
+	if(persistStatus){
+		process.stdout.moveCursor(0, -1);
+		process.stdout.clearLine(0);
+		process.stdout.write(`${status}\n`);
+	} else {
+		process.stdout.moveCursor(0, -1);
+	}
+	process.stdout.cursorTo(0);
 }
 
 // main
@@ -255,13 +277,17 @@ const files = execSync(`ls -1Ap "${targetDirectory}"`)
 	.filter(fileName => fileTypesRegEx.test(fileName) && regularFileRegEx.test(fileName));
 
 if (files.length) {
-	console.info(`Found ${files.length} files.`);
-	files.forEach((file, index, array) => processFile(file, targetDirectory, index, array.length));
 	console.info(`
-Processed: ${processed}
-Skipped: ${skipped}
-Errors: ${errors}
-Time: ${process.uptime().toFixed(1)} s.`);
+Target: ${chalk.yellow(targetDirectory)}
+ Files: ${chalk.cyan(files.length)}\n`);
+	files.forEach((file, index, array) => processFile(file, targetDirectory, index, array.length));
+	console.log('');
+	console.info(`
+Processed: ${chalk.cyan(processed)}
+  Skipped: ${chalk.yellow(skipped)}
+   Errors: ${chalk.red(errors)}
+
+     Time: ${process.uptime().toFixed(1)}s`);
 } else {
 	console.error(chalk.red('No files found'), targetDirectory);
 }
