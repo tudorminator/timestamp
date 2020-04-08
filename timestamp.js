@@ -235,16 +235,34 @@ const processFile = (fileName, path, index, totalCount) => {
 }
 
 /**
+ * Constrain a string to a maximum length by removing the middle and inserting ellipsis
+ * @param {String} str The string to constrain
+ * @param {Number} len Length to constrain it to
+ */
+const constrainStr = (str, len = Math.floor(totalTerminalColumns / 2)) => {
+  if(str.length <= len) {
+    return str;
+  }
+  const toRemove = 1 + Math.ceil((str.length - len) / 2);
+  const index1 = Math.floor(str.length / 2) - toRemove;
+  const index2 = Math.ceil(str.length / 2) + toRemove;
+  return `${str.substring(0, index1)}…${str.substring(index2)}`;
+}
+
+/**
  * Print progress bar
  */
 const printStatus = (current, total, status = '', persistStatus = false) => {
 	const percent = Math.floor(current * 100 / total);
 	const percentText = `(${percent}%)`.padStart(5);
-	const indexText = chalk.gray(`${current.toString().padStart(total.toString().length)}/${total}`);
-	const progressText = `${percentText} ${indexText}`;
-	const fileInfoText = persistStatus ? '' : chalk.magenta(status);
-	// const barLength = totalTerminalColumns - 1 - 2 - 4; // 2 chars for bar ends, 4 chars for percent label
-	const barLength = Math.min(totalTerminalColumns / 4, (totalTerminalColumns - progressText.length - fileInfoText.length) / 2);
+	const indexText = `${current.toString().padStart(total.toString().length)}/${total}`;
+  const progressText = `${percentText} ${chalk.gray(indexText)}`;
+  let fileInfoText = '';
+	if(!persistStatus){
+    const maxFileInfoLength = Math.floor(totalTerminalColumns / 2) - percentText.length - indexText.length - 2;
+    fileInfoText = chalk.magenta(constrainStr(status, maxFileInfoLength));
+  }
+  const barLength = Math.floor(totalTerminalColumns / 2) - 4; // ` ‣  `.length
 	const filledLength = Math.min(barLength, Math.floor(percent / 100 * barLength));
 	const padLength = barLength - filledLength;
 	// console.debug({current, total, percent, barLength, filledLength, padLength});
