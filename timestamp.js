@@ -286,10 +286,11 @@ let targetDirectory = process.argv.slice(2)[0];
 const multipleSeparatorsRegEx = new RegExp(`${path.posix.sep}{2,}`, 'gi');
 // ensure path ends with separator
 targetDirectory = `${targetDirectory}${path.posix.sep}`.replace(multipleSeparatorsRegEx, `${path.posix.sep}`);
-// filter unsupported files
+// filter out unsupported files
 const fileTypesRegEx = /(?:jpe?g)|(?:png)|(?:gif)|(?:mp4)|(?:m4v)|(?:mov)|(?:avi)$/i;
-// filter lines ending in `/` because they are subfolders
-const regularFileRegEx = /[^/]$/;
+// filter out lines ending in `/` because they are subfolders
+// and filter out AppleDouble files (starting with `._`)
+const regularFileRegEx = /^(?!\._).*[^/]$/;
 
 // `ls -1Ap`
 // -1: list files one per line
