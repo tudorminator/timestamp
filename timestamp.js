@@ -9,12 +9,14 @@ const path = require('path');
 const scriptPath = path.parse(process.argv[1]);
 const scriptName = scriptPath.base;
 const platform = os.platform();
-const helpText = `Usage: ${chalk.blue(`${scriptName}`)} ${chalk.magenta('/path/to/some/folder/with/images/and/or/movies')}
+const skipEXIF = process.argv.includes('-q') || process.argv.includes('--quick');
+const helpText = `Usage: ${chalk.blue(`${scriptName}`)} [-q|--quick] ${chalk.magenta('/path/to/some/directory')}
 
 Update the modification times of ${chalk.inverse('image')} or ${chalk.inverse('video')} files in the specified directory
 using the capture times from their EXIF data.
 
-If no EXIF data is found, it tries to parse the file's name for information.
+If no EXIF data is found or you specify the ${chalk.magenta('-q')} or ${chalk.magenta('--quick')} option,
+it tries to parse the file's name for information.
 
 Supported files: ${chalk.blue('jp(e)g')}, ${chalk.blue('png')}, ${chalk.blue('gif')}, ${chalk.blue('mp4')}, ${chalk.blue('m4v')}, ${chalk.blue('mov')}, ${chalk.blue('avi')}`;
 
@@ -175,7 +177,7 @@ const parseFileName = (fileName) => {
  */
 const processFile = (fileName, path, index, totalCount) => {
 	printStatus(index + 1, totalCount, fileName);
-	const exifDateTime = getExifData(`${path}${fileName}`);
+	const exifDateTime = skipEXIF ? '' : getExifData(`${path}${fileName}`);
 	const mTime = getModifiedTime(`${path}${fileName}`);
 
 	if (exifDateTime.length) {
@@ -286,7 +288,9 @@ const unhideCursor = () => {
 };
 
 // main
-if(process.argv.slice(2).length !== 1){
+// get rid of `--quick` param
+let params = process.argv.slice(2).filter(p => p !== '--quick' && p !== '-q');
+if(params.length !== 1){
 	console.error(helpText);
 	process.exit(1);
 }
@@ -300,7 +304,7 @@ process.on('uncaughtException', unhideCursor);
 const supportsExif = isExifToolPresent();
 
 let exitCode = 0;
-let targetDirectory = process.argv.slice(2)[0];
+let targetDirectory = params[0];
 const multipleSeparatorsRegEx = new RegExp(`${path.posix.sep}{2,}`, 'gi');
 // ensure path ends with separator
 targetDirectory = `${targetDirectory}${path.posix.sep}`.replace(multipleSeparatorsRegEx, `${path.posix.sep}`);

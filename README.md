@@ -10,11 +10,11 @@ Uses the great [ExifTool by Phil Harvey](https://www.sno.phy.queensu.ca/~phil/ex
 
 ## Usage:
 ```bash
-$ timestamp.js "/path/to/some/folder/with/images/and/or/movies"
+$ timestamp.js [-q|--quick] "/path/to/some/directory"
 ```
 
 Updates the modification times of image or video files in the specified directory using the capture times from their EXIF data.
 
-If no EXIF data is found, it tries to parse the file's name for information.
+If no EXIF data is found or you specify the `-q` or `--quick` option, it tries to parse the file's name for information.
 
 Supported files: `jp(e)g`, `png`, `gif`, `mp4`, `m4v`, `mov`, `avi`
