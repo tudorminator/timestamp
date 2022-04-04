@@ -15,6 +15,6 @@ $ timestamp.js [-q|--quick] "/path/to/some/directory"
 
 Updates the modification times of image or video files in the specified directory using the capture times from their EXIF data.
 
-If no EXIF data is found or if you specify the `-q` (`--quick`) option, it tries to parse the file's name for information looking for text that resembles the format `YYYY-MM-DD HH:mm:ss`. The parsing is not very smart or foolproof (see [line 29 in timestamp.js](blob/master/timestamp.js#L29)).
+If no EXIF data is found or if you specify the `-q` (`--quick`) option, it tries to parse the file's name for information looking for text that resembles the format `YYYY-MM-DD HH:mm:ss`. The parsing is not very smart or foolproof (see [line 29 in timestamp.js](timestamp.js#L29)).
 
 Supported files: `jp(e)g`, `png`, `gif`, `mp4`, `m4v`, `mov`, `avi`
