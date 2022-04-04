@@ -22,7 +22,11 @@ Supported files: ${chalk.blue('jp(e)g')}, ${chalk.blue('png')}, ${chalk.blue('gi
 
 // YY(YY)-MM-DD HH:mm:ss
 // all separators may vary or be absent, time values may be absent
-const timeStampRegex = /(\d{2,4}.?\d{2}.?\d{2})[^\d]*(\d{0,2}.?\d{0,2}.?\d{0,2})/miu;
+// !!! fails on filenames like 2014-12-25 11;48-2.jpg
+// const timeStampRegex = /(\d{2,4}.?\d{2}.?\d{2})[^\d]*(\d{0,2}.?\d{0,2}.?\d{0,2})/miu;
+// → change condition that between minutes and seconds must have something else than a hyphen (-) or a digit
+//-------------------------YYYY     MM     DD           HH       mm             SS
+const timeStampRegex = /(\d{2,4}.?\d{2}.?\d{2})[^\d]*(\d{0,2}.?\d{0,2}[^-\d]?\d{0,2})/miu;
 
 let skipped = 0;
 let processed = 0;
