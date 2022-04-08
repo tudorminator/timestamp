@@ -1,0 +1,23 @@
+{
+  "name": "timestamp",
+  "version": "1.0.0",
+  "description": "Update the modification times of files and directories based on exif data or name",
+  "main": "timestamp.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "show-help": "./timestamp.mjs --help && ./dirstamp.mjs --help"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tudorminator/timestamp.git"
+  },
+  "author": "Tudor Iordăchescu, tudor.iordachescu@gmail.com",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/tudorminator/timestamp/issues"
+  },
+  "homepage": "https://github.com/tudorminator/timestamp#readme",
+  "dependencies": {
+    "chalk": "^5.0.1"
+  }
+}

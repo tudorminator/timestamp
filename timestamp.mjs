@@ -1,16 +1,20 @@
 #!/usr/bin/env node
 
-const os = require('os');
-const readline = require('readline');
-const chalk = require('chalk');
-const { execSync } = require('child_process');
-const path = require('path');
+import * as os from 'os';
+import chalk from 'chalk';
+import { execSync } from 'child_process';
+import { parse, basename, posix } from 'path';
 
-const scriptPath = path.parse(process.argv[1]);
+const scriptPath = parse(process.argv[1]);
 const scriptName = scriptPath.base;
 const platform = os.platform();
 const skipEXIF = process.argv.includes('-q') || process.argv.includes('--quick');
-const helpText = `Usage: ${chalk.blue(`${scriptName}`)} [-q|--quick] ${chalk.magenta('/path/to/some/directory')}
+const showHelp = process.argv.includes('-h') || process.argv.includes('--help');
+const helpText = `
+░▀█▀░█░█▄▒▄█▒██▀░▄▀▀░▀█▀▒▄▀▄░█▄▒▄█▒█▀▄
+░▒█▒░█░█▒▀▒█░█▄▄▒▄██░▒█▒░█▀█░█▒▀▒█░█▀▒
+
+Usage: ${chalk.blue(`${scriptName}`)} [-q|--quick] ${chalk.magenta('/path/to/some/directory')}
 
 Update the modification times of ${chalk.inverse('image')} or ${chalk.inverse('video')} files in the specified directory
 using the capture times from their EXIF data.
@@ -18,7 +22,8 @@ using the capture times from their EXIF data.
 If no EXIF data is found or you specify the ${chalk.magenta('-q')} or ${chalk.magenta('--quick')} option,
 it tries to parse the file's name for information.
 
-Supported files: ${chalk.blue('jp(e)g')}, ${chalk.blue('png')}, ${chalk.blue('gif')}, ${chalk.blue('mp4')}, ${chalk.blue('m4v')}, ${chalk.blue('mov')}, ${chalk.blue('avi')}`;
+Supported files: ${chalk.blue('jp(e)g')}, ${chalk.blue('png')}, ${chalk.blue('gif')}, ${chalk.blue('mp4')}, ${chalk.blue('m4v')}, ${chalk.blue('mov')}, ${chalk.blue('avi')}
+`;
 
 // YY(YY)-MM-DD HH:mm:ss
 // all separators may vary or be absent, time values may be absent
@@ -34,17 +39,6 @@ let errors = 0;
 const startTime = Date.now();
 
 const totalTerminalColumns = process.stdout.columns;
-
-/**
- * Zero-pad a number
- * @param {any} number The number to zero pad
- * @param {number} digits How many total digits
- */
-const padNumber = (number, digits) => {
-	const paddingZeros = new Array(101).join('0');
-	const computed = paddingZeros + number.toString();
-	return computed.slice(-1 * digits);
-};
 
 /**
  * Change modified date of a file
@@ -64,7 +58,7 @@ const touchFile = (timeStamp, file) => {
 	} catch(error){
 		// console.error(chalk.red('Error'), ': ', chalk.red(timeStamp), chalk.magenta(file));
 		process.stdout.clearLine(0);
-		console.error(chalk.red('Error:'), `Got ${chalk.red('invalid')} timestamp (${chalk.gray(timeStamp)}) from unexpected file format ${chalk.magenta(path.basename(file))}. File not changed.`);
+		console.error(chalk.red('Error:'), `Got ${chalk.red('invalid')} timestamp (${chalk.gray(timeStamp)}) from unexpected file format ${chalk.magenta(basename(file))}. File not changed.`);
 		errors += 1;
 		return 1;
 	}
@@ -294,6 +288,10 @@ const unhideCursor = () => {
 // main
 // get rid of `--quick` param
 let params = process.argv.slice(2).filter(p => p !== '--quick' && p !== '-q');
+if(showHelp){
+	console.log(helpText);
+	process.exit(0);
+}
 if(params.length !== 1){
 	console.error(helpText);
 	process.exit(1);
@@ -309,9 +307,9 @@ const supportsExif = isExifToolPresent();
 
 let exitCode = 0;
 let targetDirectory = params[0];
-const multipleSeparatorsRegEx = new RegExp(`${path.posix.sep}{2,}`, 'gi');
+const multipleSeparatorsRegEx = new RegExp(`${posix.sep}{2,}`, 'gi');
 // ensure path ends with separator
-targetDirectory = `${targetDirectory}${path.posix.sep}`.replace(multipleSeparatorsRegEx, `${path.posix.sep}`);
+targetDirectory = `${targetDirectory}${posix.sep}`.replace(multipleSeparatorsRegEx, `${posix.sep}`);
 // filter out unsupported files
 const fileTypesRegEx = /(?:jpe?g)|(?:png)|(?:gif)|(?:mp4)|(?:m4v)|(?:mov)|(?:avi)$/i;
 // filter out lines ending in `/` because they are subfolders
