@@ -4,17 +4,19 @@ import * as os from 'os';
 import chalk from 'chalk';
 import { execSync } from 'child_process';
 import { parse, basename, posix } from 'path';
+import { writeFileSync } from 'fs';
 
 const scriptPath = parse(process.argv[1]);
 const scriptName = scriptPath.base;
 const platform = os.platform();
 const skipEXIF = process.argv.includes('-q') || process.argv.includes('--quick');
 const showHelp = process.argv.includes('-h') || process.argv.includes('--help');
+const skipSummary = process.argv.includes('-n') || process.argv.includes('--nosummary')
 const helpText = `
 ░▀█▀░█░█▄▒▄█▒██▀░▄▀▀░▀█▀▒▄▀▄░█▄▒▄█▒█▀▄
 ░▒█▒░█░█▒▀▒█░█▄▄▒▄██░▒█▒░█▀█░█▒▀▒█░█▀▒
 
-Usage: ${chalk.blue(`${scriptName}`)} [-q|--quick] ${chalk.magenta('/path/to/some/directory')}
+Usage: ${chalk.blue(`${scriptName}`)} [-q|--quick] [-n|--nosummary] ${chalk.magenta('/path/to/some/directory')}
 
 Update the modification times of ${chalk.inverse('image')} or ${chalk.inverse('video')} files in the specified directory
 using the capture times from their EXIF data.
@@ -23,6 +25,9 @@ If no EXIF data is found or you specify the ${chalk.magenta('-q')} or ${chalk.ma
 it tries to parse the file's name for information.
 
 Supported files: ${chalk.blue('jp(e)g')}, ${chalk.blue('png')}, ${chalk.blue('gif')}, ${chalk.blue('mp4')}, ${chalk.blue('m4v')}, ${chalk.blue('mov')}, ${chalk.blue('avi')}
+
+A JSON file containing the run date and an array of changed files is also saved,
+unless the ${chalk.magenta('-n')} or ${chalk.magenta('--nosummary')} option is specified.
 `;
 
 // YY(YY)-MM-DD HH:mm:ss
@@ -36,6 +41,11 @@ const timeStampRegex = /(\d{2,4}.?\d{2}.?\d{2})[^\d]*(\d{0,2}.?\d{0,2}[^-\d]?\d{
 let skipped = 0;
 let processed = 0;
 let errors = 0;
+const currentDate = new Date();
+const summaryObj = {
+	'date': currentDate,
+	'files': [],
+};
 const startTime = Date.now();
 
 const totalTerminalColumns = process.stdout.columns;
@@ -194,6 +204,8 @@ const processFile = (fileName, path, index, totalCount) => {
 					`${fileName}: ${chalk.magenta(mTime)} → ${chalk.blue(exifDateTime)} (EXIF)`,
 					true
 				);
+				// add filename to the summary object
+				summaryObj.files.push(fileName);
 			}
 		} else {
 			skipped += 1;
@@ -217,6 +229,8 @@ const processFile = (fileName, path, index, totalCount) => {
 						`${fileName}: ${chalk.magenta(mTime)} → ${chalk.blue(timeStampFromFilename)} (parsed)`,
 						true
 					);
+					// add filename to the summary object
+					summaryObj.files.push(fileName);
 				}
 			}	else {
 				skipped += 1;
@@ -286,8 +300,8 @@ const unhideCursor = () => {
 };
 
 // main
-// get rid of `--quick` param
-let params = process.argv.slice(2).filter(p => p !== '--quick' && p !== '-q');
+// get rid of already processed params
+let params = process.argv.slice(2).filter(p => !['--quick', '-q', '--nosummary', '-n'].includes(p));
 if(showHelp){
 	console.log(helpText);
 	process.exit(0);
@@ -336,11 +350,29 @@ Files found: ${chalk.blue(files.length)}\n`);
  	files.forEach((file, index, array) => processFile(file, targetDirectory, index, array.length));
 
 	console.log('');
+
+	// write summary JSON
+	let writeStatus = 'skipped';
+	if (processed > 0 && !skipSummary) {
+		const json = JSON.stringify(summaryObj, null, 2);
+		try {
+			writeFileSync(`${targetDirectory}_h5ai.changes.json`, json);
+			writeStatus = 'written';
+		} catch (error) {
+			console.error(chalk.red(`Can't write changes summary file`), { error });
+			writeStatus = chalk.red('not written');
+			errors += 1;
+		}
+	}
+
+	// print info
 	console.info(`
 Changed: ${processed != '0' ? chalk.blue(processed) : processed}
 Skipped: ${skipped != '0' ? chalk.yellow(skipped) : skipped}
  Errors: ${errors != '0' ? chalk.red(errors) : errors}
-${chalk.bgGray.black(`   Time: ${process.uptime().toFixed(1)}s `)}`);
+Summary: ${writeStatus}
+${chalk.bgGray.black(`   Time: ${process.uptime().toFixed(1)}s `)}`
+	);
 } else {
 	console.error(chalk.red('No files found'), targetDirectory);
 }
